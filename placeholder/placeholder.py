@@ -3,10 +3,13 @@ import os
 import sys
 
 from django.conf import settings
+from PIL import Image, ImageDraw
 
 DEBUG = os.environ.get('DEBUG', 'on') == 'on'
 
 SECRET_KEY = os.environ.get('SECRET_KEY', '#-eeb2^7=-vl6eqwmhvj(_^)kvlm_!va$9%e)q^q=hpq)uthko')
+
+BASE_DIR = os.path.dirname(__file__)
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
@@ -20,24 +23,36 @@ settings.configure(
         'django.middleware.csrf.CsrfViewMiddleware',
         'django.middleware.clickjacking.XFrameOptionsMiddleware',
     ),
+    INSTALLED_APPS=(
+        'django.contrib.staticfiles',
+    ),
+    TEMPLATE_DIRS=(
+        os.path.join(BASE_DIR, 'templates'),
+    ),
+    STATICFILES_DIRS=(
+        os.path.join(BASE_DIR, 'static'),
+    ),
+    STATIC_URL='/static/',
 )
 
 from django import forms
 from django.conf.urls import url
 from django.core.cache import cache
+from django.core.urlresolvers import reverse
 from django.core.wsgi import get_wsgi_application
 from django.http import HttpResponse, HttpResponseBadRequest
+from django.shortcuts import render
 from django.views.decorators.http import etag
 from io import BytesIO
 from PIL import Image, ImageDraw
 
-def generate_etag(request, witdh, height):
+def generate_etag(request, width, height):
     content = 'Placeholder: {0} x {1}'.format(width, height)
     return hashlib.sha1(content.encode('utf-8')).hexdigest()
 
 class ImageForm(forms.Form):
     height = forms.IntegerField(min_value=1, max_value=2000)
-    weidht = forms.IntegerField(min_value=1, max_value=2000)
+    width = forms.IntegerField(min_value=1, max_value=2000)
 
     def generate(self, image_format='PNG'):
         height = self.cleaned_data['height']
@@ -70,7 +85,11 @@ def placeholder(request, width, height):
         return HttpResponseBadRequest('Invalid Image Reqeust')
         
 def index(request):
-    return HttpResponse('Hello World')
+    example = reverse('placeholder', kwargs={'width': 50, 'height':50})
+    content = {
+        'example': request.build_absolute_uri(example)
+    }
+    return render(request, 'home.html', content)
 
 urlpatterns = (
     url(r'^image/(?P<width>[0-9]+)x(?P<height>[0-9]+)/$', placeholder,
